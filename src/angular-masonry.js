@@ -8,6 +8,7 @@
 
   angular.module('wu.masonry', [])
     .controller('MasonryCtrl', function controller($scope, $element, $timeout) {
+      var msnry = null;
       var bricks = {};
       var schedule = [];
       var destroyed = false;
@@ -16,6 +17,15 @@
 
       this.preserveOrder = false;
       this.loadImages = true;
+
+      $scope.$on('masonry.created',function(){
+        msnry = $scope.msnry;
+      });
+
+      this.printS = function printS(){
+        console.log('called');
+
+      };
 
       this.scheduleMasonryOnce = function scheduleMasonryOnce() {
         var args = arguments;
@@ -42,7 +52,8 @@
             return;
           }
           schedule.forEach(function scheduleForEach(args) {
-            $element.masonry.apply($element, args);
+            msnry[args]();
+            self.printS();
           });
           schedule = [];
         }, 30);
@@ -59,13 +70,13 @@
 
         function _append() {
           if (Object.keys(bricks).length === 0) {
-            $element.masonry('resize');
+            msnry.resize();
           }
           if (bricks[id] === undefined) {
             // Keep track of added elements.
             bricks[id] = true;
             defaultLoaded(element);
-            $element.masonry('appended', element, true);
+            msnry.appended(element);
           }
         }
 
@@ -82,9 +93,9 @@
           _layout();
         } else if (self.preserveOrder) {
           _append();
-          element.imagesLoaded(_layout);
+          imagesLoaded(element, _layout);
         } else {
-          element.imagesLoaded(function imagesLoaded() {
+          imagesLoaded(element, function imagesLoaded() {
             _append();
             _layout();
           });
@@ -97,24 +108,22 @@
         }
 
         delete bricks[id];
-        $element.masonry('remove', element);
+        msnry.remove(element);
         this.scheduleMasonryOnce('layout');
       };
 
       this.destroy = function destroy() {
         destroyed = true;
 
-        if ($element.data('masonry')) {
-          // Gently uninitialize if still present
-          $element.masonry('destroy');
-        }
+        msnry.destroy();
+
         $scope.$emit('masonry.destroyed');
 
         bricks = [];
       };
 
       this.reload = function reload() {
-        $element.masonry();
+        msnry.layout();
         $scope.$emit('masonry.reloaded');
       };
 
@@ -130,7 +139,8 @@
               itemSelector: attrs.itemSelector || '.masonry-brick',
               columnWidth: parseInt(attrs.columnWidth, 10) || attrs.columnWidth
             }, attrOptions || {});
-            element.masonry(options);
+            scope.msnry = new Masonry(element[0],options);
+            scope.print = {test:function(){}}
             var loadImages = scope.$eval(attrs.loadImages);
             ctrl.loadImages = loadImages !== false;
             var preserveOrder = scope.$eval(attrs.preserveOrder);
